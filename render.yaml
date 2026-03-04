@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: golink
+    runtime: python
+    buildCommand: pip install -r api/requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: JWT_SECRET_KEY
+        generateValue: true       # Render auto-generates a secret
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        generateValue: true       # Render auto-generates — retrieve from dashboard
+      - key: DATABASE_URL
+        fromDatabase:
+          name: golink-db
+          property: connectionString
+
+databases:
+  - name: golink-db
+    plan: free
