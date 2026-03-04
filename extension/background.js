@@ -17,10 +17,52 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === SYNC_ALARM) syncLinks();
 });
 
-// ── Fallback: unknown slugs (not in cache / not yet synced) ───────────────────
-// DNR rules cover all synced slugs without needing /etc/hosts.
-// For anything that slips through (slug not in cache), Chrome will hit a DNS
-// error for the "go" hostname. We catch that here and forward to the API.
+// ── Primary intercept: search engine queries matching "go/slug" ───────────────
+// When the user types "go/gh" without http://, Chrome treats it as a search.
+// We intercept the resulting search navigation before the page loads and
+// redirect to the target URL instead.
+// webNavigation events don't require host_permissions — just the "webNavigation"
+// permission we already have.
+
+const SEARCH_PATTERNS = [
+  // Google
+  { hostEquals: "www.google.com",   pathEquals: "/search" },
+  // Bing
+  { hostEquals: "www.bing.com",     pathEquals: "/search" },
+  // DuckDuckGo
+  { hostEquals: "duckduckgo.com",   pathEquals: "/" },
+  // Brave Search
+  { hostEquals: "search.brave.com", pathEquals: "/search" },
+];
+
+chrome.webNavigation.onBeforeNavigate.addListener(
+  async (details) => {
+    if (details.frameId !== 0) return;
+
+    const url = new URL(details.url);
+    // All major search engines use "q" as the query param
+    const q = (url.searchParams.get("q") || "").trim();
+
+    // Match "go/slug" or "go/slug/extra" — must start exactly with "go/"
+    const match = q.match(/^go\/([^\s]+)$/);
+    if (!match) return;
+
+    const slug = match[1];
+    const cache = await getCache();
+
+    if (cache[slug]) {
+      chrome.tabs.update(details.tabId, { url: cache[slug].url });
+    } else {
+      // Unknown slug — send to API which will 302 or 404
+      const apiBase = await getApiBase();
+      chrome.tabs.update(details.tabId, { url: `${apiBase}/go/${slug}` });
+    }
+  },
+  { url: SEARCH_PATTERNS }
+);
+
+// ── Fallback: http://go/* navigations that miss the DNR rules ─────────────────
+// Catches DNS errors for "go" when a slug isn't in the DNR rules yet.
 
 chrome.webNavigation.onErrorOccurred.addListener(
   async (details) => {
