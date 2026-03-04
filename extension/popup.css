@@ -93,10 +93,25 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.btn-row {
+  display: flex;
+  gap: 6px;
+}
+
 button.full-width {
-  width: 100%;
+  flex: 1;
   padding: 7px;
   font-size: 13px;
+}
+
+button.secondary {
+  background: #fff;
+  color: #1a73e8;
+  border: 1px solid #dadce0;
+}
+
+button.secondary:hover {
+  background: #f1f3f4;
 }
 
 #message {

@@ -20,6 +20,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  document.getElementById("view-btn").addEventListener("click", () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL("links.html") });
+  });
+
   document.getElementById("sync-btn").addEventListener("click", () => {
     const btn = document.getElementById("sync-btn");
     btn.disabled = true;
