@@ -7,7 +7,8 @@
     "storage",
     "alarms",
     "webNavigation",
-    "tabs"
+    "tabs",
+    "declarativeNetRequest"
   ],
   "host_permissions": [
     "http://go/*"

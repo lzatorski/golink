@@ -1,5 +1,4 @@
 // ── Configuration ─────────────────────────────────────────────────────────────
-// Set API_BASE to your deployed Render.com URL, or keep localhost for local dev.
 const DEFAULT_API_BASE = "http://localhost:8000";
 const CACHE_KEY = "golink_cache";
 const TOKEN_KEY = "golink_token";
@@ -18,43 +17,25 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === SYNC_ALARM) syncLinks();
 });
 
-// ── Navigation intercept ──────────────────────────────────────────────────────
+// ── Fallback: unknown slugs (not in cache / not yet synced) ───────────────────
+// DNR rules cover all synced slugs without needing /etc/hosts.
+// For anything that slips through (slug not in cache), Chrome will hit a DNS
+// error for the "go" hostname. We catch that here and forward to the API.
 
-chrome.webNavigation.onBeforeNavigate.addListener(
+chrome.webNavigation.onErrorOccurred.addListener(
   async (details) => {
-    // Only handle main frame navigations to http://go/*
     if (details.frameId !== 0) return;
-
     const url = new URL(details.url);
-    // hostname should be exactly "go"
     if (url.hostname !== "go") return;
 
-    const slug = url.pathname.replace(/^\//, "") || url.search.replace(/^\?/, "");
+    const slug = url.pathname.replace(/^\//, "");
     if (!slug) return;
 
-    const target = await resolveSlug(slug);
-    if (target) {
-      chrome.tabs.update(details.tabId, { url: target });
-    } else {
-      chrome.tabs.update(details.tabId, {
-        url: `${await getApiBase()}/go/${slug}`,
-      });
-    }
+    const apiBase = await getApiBase();
+    chrome.tabs.update(details.tabId, { url: `${apiBase}/go/${slug}` });
   },
   { url: [{ hostEquals: "go", schemes: ["http"] }] }
 );
-
-// ── Resolution logic ──────────────────────────────────────────────────────────
-
-async function resolveSlug(slug) {
-  const cache = await getCache();
-  if (cache[slug]) {
-    console.log(`GoLink: cache hit for '${slug}' → ${cache[slug].url}`);
-    return cache[slug].url;
-  }
-  console.log(`GoLink: cache miss for '${slug}', falling back to API`);
-  return null;
-}
 
 // ── Sync ──────────────────────────────────────────────────────────────────────
 
@@ -82,20 +63,50 @@ async function syncLinks() {
     }
 
     const links = await response.json();
+
+    // Persist cache for the links page / status display
     const cache = {};
     for (const link of links) {
       cache[link.slug] = { url: link.url, description: link.description };
     }
-
     await chrome.storage.local.set({
       [CACHE_KEY]: cache,
       last_sync: new Date().toISOString(),
     });
 
+    // Update declarativeNetRequest rules so redirects work without /etc/hosts
+    await updateDNRRules(links);
+
     console.log(`GoLink: synced ${links.length} links`);
   } catch (err) {
     console.error("GoLink: sync error", err);
   }
+}
+
+// ── declarativeNetRequest ─────────────────────────────────────────────────────
+
+async function updateDNRRules(links) {
+  // Remove all existing dynamic rules first
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  const removeRuleIds = existing.map((r) => r.id);
+
+  // Build one redirect rule per slug
+  const addRules = links.map((link, idx) => ({
+    id: idx + 1,
+    priority: 1,
+    action: {
+      type: "redirect",
+      redirect: { url: link.url },
+    },
+    condition: {
+      // |http://go/SLUG matches any URL starting with http://go/{slug}
+      urlFilter: `|http://go/${link.slug}`,
+      resourceTypes: ["main_frame"],
+    },
+  }));
+
+  await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules });
+  console.log(`GoLink: registered ${addRules.length} DNR redirect rules`);
 }
 
 // ── Storage helpers ───────────────────────────────────────────────────────────
@@ -121,7 +132,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   switch (message.type) {
     case "sync":
       syncLinks().then(() => sendResponse({ success: true }));
-      return true; // keep channel open for async response
+      return true;
 
     case "setToken":
       chrome.storage.local.set({ [TOKEN_KEY]: message.token }).then(() =>
