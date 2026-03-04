@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "GoLink",
+  "version": "1.0.0",
+  "description": "Personal URL shortener — intercepts go/* links and redirects them",
+  "permissions": [
+    "storage",
+    "alarms",
+    "webNavigation",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://go/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "GoLink"
+  }
+}

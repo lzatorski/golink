@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>GoLink</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>GoLink</h1>
+
+    <section class="card" id="status-card">
+      <div class="row"><span class="label">Links cached</span><span id="link-count">—</span></div>
+      <div class="row"><span class="label">Last sync</span><span id="last-sync">—</span></div>
+      <div class="row"><span class="label">Token set</span><span id="has-token">—</span></div>
+    </section>
+
+    <section class="card">
+      <label for="api-base-input">API base URL</label>
+      <div class="input-row">
+        <input type="text" id="api-base-input" placeholder="https://your-app.onrender.com" />
+        <button id="save-api-base">Save</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <label for="token-input">JWT token</label>
+      <div class="input-row">
+        <input type="password" id="token-input" placeholder="Paste token here" />
+        <button id="save-token">Save</button>
+      </div>
+    </section>
+
+    <button id="sync-btn" class="primary full-width">Sync now</button>
+
+    <p id="message"></p>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
