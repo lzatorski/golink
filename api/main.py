@@ -1,6 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException
-from fastapi.responses import RedirectResponse
+from pathlib import Path
+
+from fastapi import FastAPI, Depends, HTTPException, Request, Form
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from . import models, schemas, auth
@@ -20,6 +23,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
 
 
 # ── Public ──────────────────────────────────────────────────────────────────
@@ -42,7 +47,7 @@ def get_token(credentials: schemas.Credentials):
     return {"access_token": token, "token_type": "bearer"}
 
 
-# ── Protected ────────────────────────────────────────────────────────────────
+# ── Protected API ─────────────────────────────────────────────────────────────
 
 @app.get("/api/links", response_model=list[schemas.LinkResponse], tags=["links"])
 def list_links(
@@ -100,3 +105,131 @@ def delete_link(
 @app.get("/health", tags=["meta"])
 def health():
     return {"status": "ok"}
+
+
+# ── Web UI ────────────────────────────────────────────────────────────────────
+
+@app.get("/", response_class=HTMLResponse, include_in_schema=False)
+def root():
+    return RedirectResponse("/ui/links")
+
+
+@app.get("/ui/login", response_class=HTMLResponse, include_in_schema=False)
+def ui_login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request, "user": None})
+
+
+@app.post("/ui/login", response_class=HTMLResponse, include_in_schema=False)
+def ui_login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+):
+    token = auth.authenticate(username, password)
+    if not token:
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "user": None, "error": "Invalid username or password."},
+            status_code=401,
+        )
+    response = RedirectResponse("/ui/links", status_code=303)
+    response.set_cookie("token", token, httponly=True, samesite="lax", max_age=60 * 60 * 24 * 30)
+    return response
+
+
+@app.get("/ui/logout", include_in_schema=False)
+def ui_logout():
+    response = RedirectResponse("/ui/login", status_code=303)
+    response.delete_cookie("token")
+    return response
+
+
+@app.get("/ui/links", response_class=HTMLResponse, include_in_schema=False)
+def ui_links(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(auth.get_web_user),
+    success: str = None,
+    error: str = None,
+):
+    if not user:
+        return RedirectResponse("/ui/login", status_code=303)
+    links = db.query(models.Link).order_by(models.Link.slug).all()
+    return templates.TemplateResponse("links.html", {
+        "request": request,
+        "user": user,
+        "links": links,
+        "flash_success": success,
+        "flash_error": error,
+    })
+
+
+@app.post("/ui/links", response_class=HTMLResponse, include_in_schema=False)
+def ui_create_link(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(auth.get_web_user),
+    slug: str = Form(...),
+    url: str = Form(...),
+    description: str = Form(""),
+):
+    if not user:
+        return RedirectResponse("/ui/login", status_code=303)
+    slug = slug.strip().lower()
+    if not slug:
+        return RedirectResponse("/ui/links?error=Slug+cannot+be+empty", status_code=303)
+    if db.query(models.Link).filter(models.Link.slug == slug).first():
+        return RedirectResponse(f"/ui/links?error=Slug+%27{slug}%27+already+exists", status_code=303)
+    db.add(models.Link(slug=slug, url=url.strip(), description=description.strip()))
+    db.commit()
+    return RedirectResponse(f"/ui/links?success=go%2F{slug}+created", status_code=303)
+
+
+@app.get("/ui/links/{slug}/edit", response_class=HTMLResponse, include_in_schema=False)
+def ui_edit_page(
+    slug: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(auth.get_web_user),
+):
+    if not user:
+        return RedirectResponse("/ui/login", status_code=303)
+    link = db.query(models.Link).filter(models.Link.slug == slug).first()
+    if not link:
+        return RedirectResponse("/ui/links?error=Link+not+found", status_code=303)
+    return templates.TemplateResponse("edit.html", {"request": request, "user": user, "link": link})
+
+
+@app.post("/ui/links/{slug}/edit", response_class=HTMLResponse, include_in_schema=False)
+def ui_edit_link(
+    slug: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: str = Depends(auth.get_web_user),
+    url: str = Form(...),
+    description: str = Form(""),
+):
+    if not user:
+        return RedirectResponse("/ui/login", status_code=303)
+    link = db.query(models.Link).filter(models.Link.slug == slug).first()
+    if not link:
+        return RedirectResponse("/ui/links?error=Link+not+found", status_code=303)
+    link.url = url.strip()
+    link.description = description.strip()
+    db.commit()
+    return RedirectResponse(f"/ui/links?success=go%2F{slug}+updated", status_code=303)
+
+
+@app.post("/ui/links/{slug}/delete", include_in_schema=False)
+def ui_delete_link(
+    slug: str,
+    db: Session = Depends(get_db),
+    user: str = Depends(auth.get_web_user),
+):
+    if not user:
+        return RedirectResponse("/ui/login", status_code=303)
+    link = db.query(models.Link).filter(models.Link.slug == slug).first()
+    if link:
+        db.delete(link)
+        db.commit()
+    return RedirectResponse(f"/ui/links?success=go%2F{slug}+deleted", status_code=303)

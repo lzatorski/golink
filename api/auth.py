@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from jose import JWTError, jwt
-from fastapi import HTTPException, Header
+from fastapi import Cookie, HTTPException, Header
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -39,3 +39,14 @@ def verify_token(authorization: str = Header(...)) -> str:
         return username
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+def get_web_user(token: Optional[str] = Cookie(default=None)) -> Optional[str]:
+    """Read JWT from cookie; return username or None (no exception, for web routes)."""
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("sub")
+    except JWTError:
+        return None

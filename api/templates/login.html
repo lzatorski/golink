@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title_suffix %} — Sign in{% endblock %}
+{% block content %}
+<div style="max-width: 360px; margin: 5rem auto;">
+  <div class="card">
+    <h1 style="margin-bottom: 1.5rem; text-align: center;">&#128279; GoLink</h1>
+    {% if error %}
+    <div class="flash flash-error">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/ui/login">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" style="width: 100%;" autocomplete="username" autofocus>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" style="width: 100%;" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.6rem; font-size: 0.95rem;">Sign in</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

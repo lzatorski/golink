@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title_suffix %} — Links{% endblock %}
+{% block content %}
+<h1>Links <span style="color: #94a3b8; font-weight: 400; font-size: 0.9rem;">({{ links | length }})</span></h1>
+
+{% if flash_error %}
+<div class="flash flash-error">{{ flash_error }}</div>
+{% endif %}
+{% if flash_success %}
+<div class="flash flash-success">{{ flash_success }}</div>
+{% endif %}
+
+<div class="card">
+  <div style="font-size: 0.85rem; font-weight: 600; color: #374151; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em;">Add new link</div>
+  <form method="post" action="/ui/links">
+    <div class="form-row">
+      <div>
+        <label for="slug" style="margin-bottom: 0.2rem;">Slug</label>
+        <input type="text" id="slug" name="slug" placeholder="my-link" style="width: 140px;" required>
+      </div>
+      <div style="flex: 2; min-width: 200px;">
+        <label for="url">Target URL</label>
+        <input type="url" id="url" name="url" placeholder="https://example.com/..." style="width: 100%;" required>
+      </div>
+      <div style="flex: 1; min-width: 150px;">
+        <label for="description">Description</label>
+        <input type="text" id="description" name="description" placeholder="optional" style="width: 100%;">
+      </div>
+      <div style="padding-bottom: 1px;">
+        <label style="visibility: hidden;">add</label>
+        <button type="submit" class="btn btn-primary">Add</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="padding: 0; overflow: hidden;">
+  <table>
+    <thead>
+      <tr>
+        <th>Slug</th>
+        <th>Target URL</th>
+        <th>Description</th>
+        <th style="text-align: center;">Hits</th>
+        <th style="text-align: right; padding-right: 0.75rem;">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for link in links %}
+    <tr>
+      <td><span class="slug">go/{{ link.slug }}</span></td>
+      <td><span class="url" title="{{ link.url }}"><a href="{{ link.url }}" target="_blank" rel="noopener" style="color: #2563eb; text-decoration: none;">{{ link.url }}</a></span></td>
+      <td><span class="desc">{{ link.description or '' }}</span></td>
+      <td class="hits">{{ link.hit_count }}</td>
+      <td class="actions">
+        <a href="/ui/links/{{ link.slug }}/edit" class="btn btn-secondary" style="margin-right: 0.25rem;">Edit</a>
+        <form method="post" action="/ui/links/{{ link.slug }}/delete" style="display: inline;"
+              onsubmit="return confirm('Delete go/{{ link.slug }}?');">
+          <button type="submit" class="btn btn-danger">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr class="empty-row">
+      <td colspan="5">No links yet. Add one above.</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

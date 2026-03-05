@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoLink{% block title_suffix %}{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f1f5f9; color: #1e293b; min-height: 100vh; }
+    nav { background: #1e40af; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+    nav a { color: white; text-decoration: none; font-weight: 600; font-size: 1.1rem; }
+    nav .nav-right { font-size: 0.875rem; display: flex; align-items: center; gap: 1rem; }
+    nav .nav-right span { opacity: 0.75; }
+    nav .nav-right a { font-weight: 400; opacity: 0.9; }
+    nav .nav-right a:hover { opacity: 1; text-decoration: underline; }
+    main { max-width: 1000px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 1.25rem; }
+    .card { background: white; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 1.5rem; margin-bottom: 1.5rem; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+    td { padding: 0.6rem 0.75rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f8fafc; }
+    .slug { font-family: 'Courier New', monospace; font-weight: 700; color: #1e40af; font-size: 0.9rem; }
+    .url { color: #475569; font-size: 0.85rem; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .desc { color: #64748b; font-size: 0.85rem; }
+    .hits { color: #94a3b8; font-size: 0.85rem; text-align: center; }
+    .actions { white-space: nowrap; text-align: right; }
+    .btn { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.8rem; font-weight: 500; cursor: pointer; border: none; text-decoration: none; transition: background 0.15s; line-height: 1.5; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .form-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-end; }
+    .form-group { margin-bottom: 1rem; }
+    label { font-size: 0.85rem; font-weight: 500; color: #374151; display: block; margin-bottom: 0.3rem; }
+    input[type=text], input[type=password], input[type=url] {
+      padding: 0.45rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px;
+      font-size: 0.875rem; outline: none; font-family: inherit; color: #1e293b;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input[type=text]:focus, input[type=password]:focus, input[type=url]:focus {
+      border-color: #2563eb; box-shadow: 0 0 0 3px #bfdbfe;
+    }
+    input:disabled { background: #f8fafc; color: #94a3b8; cursor: default; }
+    .flash { padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 1.25rem; font-size: 0.9rem; }
+    .flash-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .flash-success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+    .empty-row td { text-align: center; padding: 2.5rem; color: #94a3b8; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/ui/links">&#128279; GoLink</a>
+  {% if user %}
+  <div class="nav-right">
+    <span>{{ user }}</span>
+    <a href="/ui/logout">Log out</a>
+  </div>
+  {% endif %}
+</nav>
+<main>
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>
